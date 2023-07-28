@@ -1,4 +1,4 @@
-module moodle-api
+module dating-api
 
 go 1.19
 

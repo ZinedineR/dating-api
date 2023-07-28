@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"time"
 
-	"moodle-api/pkg/httpclient"
+	"dating-api/pkg/httpclient"
 
 	"github.com/sirupsen/logrus"
 
-	"moodle-api/app/appconf"
-	"moodle-api/internal/base/app"
-	redis "moodle-api/internal/base/service/redisser"
-	baseModel "moodle-api/pkg/db"
-	"moodle-api/pkg/server"
+	"dating-api/app/appconf"
+	"dating-api/internal/base/app"
+	redis "dating-api/internal/base/service/redisser"
+	baseModel "dating-api/pkg/db"
+	"dating-api/pkg/server"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

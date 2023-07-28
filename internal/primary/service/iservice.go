@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"moodle-api/internal/primary/domain"
-	"moodle-api/pkg/errs"
+	"dating-api/internal/primary/domain"
+	"dating-api/pkg/errs"
 )
 
 type Service interface {

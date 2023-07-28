@@ -3,7 +3,7 @@ package bindjson
 import (
 	"strings"
 
-	"moodle-api/internal/base/app"
+	"dating-api/internal/base/app"
 )
 
 func BindJSONHelper(ctx *app.Context, obj any) (string, string) {

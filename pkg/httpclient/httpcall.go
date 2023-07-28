@@ -1,7 +1,7 @@
 package httpclient
 
 import (
-	rdis "moodle-api/internal/base/service/redisser"
+	rdis "dating-api/internal/base/service/redisser"
 )
 
 // New creates client Factory

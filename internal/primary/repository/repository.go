@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
-	"moodle-api/internal/primary/domain"
-	baseModel "moodle-api/pkg/db"
-	"moodle-api/pkg/errs"
+	"dating-api/internal/primary/domain"
+	baseModel "dating-api/pkg/db"
+	"dating-api/pkg/errs"
 
 	"gorm.io/gorm"
 )

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"moodle-api/internal/base/app"
-	"moodle-api/pkg/server"
+	"dating-api/internal/base/app"
+	"dating-api/pkg/server"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

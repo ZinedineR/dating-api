@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 
-	"moodle-api/pkg/httpclient"
+	"dating-api/pkg/httpclient"
 
-	"moodle-api/internal/primary/domain"
-	"moodle-api/internal/primary/repository"
-	"moodle-api/pkg/errs"
+	"dating-api/internal/primary/domain"
+	"dating-api/internal/primary/repository"
+	"dating-api/pkg/errs"
 )
 
 // NewService creates new user service

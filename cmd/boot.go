@@ -8,15 +8,16 @@ import (
 	"os"
 	"strconv"
 
-	"moodle-api/pkg/httpclient"
+	"dating-api/pkg/httpclient"
+	"dating-api/pkg/migration"
 
-	appConfiguration "moodle-api/app/appconf"
-	"moodle-api/internal/base/handler"
-	redis2 "moodle-api/internal/base/service/redisser"
-	priHandler "moodle-api/internal/primary/handler"
-	primaryRepo "moodle-api/internal/primary/repository"
-	primaryService "moodle-api/internal/primary/service"
-	"moodle-api/pkg/db"
+	appConfiguration "dating-api/app/appconf"
+	"dating-api/internal/base/handler"
+	redis2 "dating-api/internal/base/service/redisser"
+	priHandler "dating-api/internal/primary/handler"
+	primaryRepo "dating-api/internal/primary/repository"
+	primaryService "dating-api/internal/primary/service"
+	"dating-api/pkg/db"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/sirupsen/logrus"
@@ -140,6 +141,7 @@ func initInfrastructure() {
 	// }
 	initPostgreSQL()
 	initLog()
+	migration.Initmigrate()
 	httpClientFactory := httpclient.New()
 	httpClient = httpClientFactory.CreateClient(redisClient)
 }

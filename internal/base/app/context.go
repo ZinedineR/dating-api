@@ -1,7 +1,7 @@
 package app
 
 import (
-	"moodle-api/app/appconf"
+	"dating-api/app/appconf"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

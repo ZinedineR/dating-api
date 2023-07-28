@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 
-	"moodle-api/internal/base/handler"
+	"dating-api/internal/base/handler"
 )
 
 func (h *HttpServe) setupRouter() {

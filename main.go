@@ -1,7 +1,7 @@
 package main
 
 import (
-	"moodle-api/cmd"
+	"dating-api/cmd"
 	"os"
 
 	"github.com/sirupsen/logrus"

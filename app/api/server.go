@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"moodle-api/internal/base/handler"
-	priHandler "moodle-api/internal/primary/handler"
-	"moodle-api/pkg/server"
+	"dating-api/internal/base/handler"
+	priHandler "dating-api/internal/primary/handler"
+	"dating-api/pkg/server"
 
 	"github.com/gin-gonic/gin"
 	gintrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gin-gonic/gin"

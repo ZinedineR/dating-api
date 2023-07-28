@@ -5,7 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"moodle-api/app/api"
+	"dating-api/app/api"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

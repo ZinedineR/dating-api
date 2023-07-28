@@ -1,14 +1,12 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
 	redis "dating-api/internal/base/service/redisser"
 
-	"dating-api/internal/primary/domain"
-	primaryService "dating-api/internal/primary/service"
+	ProfileService "dating-api/internal/profile/service"
 
 	"dating-api/internal/base/app"
 	"dating-api/internal/base/handler"
@@ -19,14 +17,14 @@ import (
 
 type HTTPHandler struct {
 	App            *handler.BaseHTTPHandler
-	PrimaryService primaryService.Service
+	ProfileService ProfileService.Service
 	RedisClient    redis.RedisClient
 }
 
-func NewHTTPHandler(handler *handler.BaseHTTPHandler, primaryService primaryService.Service, redisClient redis.RedisClient) *HTTPHandler {
+func NewHTTPHandler(handler *handler.BaseHTTPHandler, ProfileService ProfileService.Service, redisClient redis.RedisClient) *HTTPHandler {
 	return &HTTPHandler{
 		App:            handler,
-		PrimaryService: primaryService,
+		ProfileService: ProfileService,
 		RedisClient:    redisClient,
 	}
 }
@@ -274,72 +272,16 @@ func (h HTTPHandler) ThrowBadRequestException(ctx *app.Context, message string) 
 	return h.App.ThrowExceptionJson(ctx, http.StatusBadRequest, 0, "Bad Request", message)
 }
 
-func (h HTTPHandler) GetQuiz(ctx *app.Context) *server.ResponseInterface {
-	quiz := ctx.Param("quiz")
-	quizId, _ := strconv.Atoi(quiz)
-	resp, err := h.PrimaryService.GetQuiz(ctx, quizId)
+func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface {
+	//Declaring Variables
+	id := ctx.Param("id")
+	Id, _ := strconv.Atoi(id)
+
+	resp, err := h.ProfileService.GetProfileData(ctx, Id)
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
-	if resp.CourseId == "" {
-		return h.DataNotFound(ctx)
-	}
-
-	return h.AsJsonInterface(ctx, http.StatusOK, resp)
-}
-
-func (h HTTPHandler) GetQuizUserRedis(ctx *app.Context) *server.ResponseInterface {
-	//Declaring Variables
-	var Response domain.GetQuizUserData
-	quiz := ctx.Param("quiz")
-	user := ctx.Param("user")
-	quizId, _ := strconv.Atoi(quiz)
-	userId, _ := strconv.Atoi(user)
-	//Getting data from Redis
-	Redisresp, _ := h.RedisClient.HGet(ctx, "QUIZ:"+quiz, user)
-	if Redisresp == "" {
-		resp, err := h.PrimaryService.GetQuizUser(ctx, quizId, userId)
-		if err != nil {
-			return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
-		}
-		if resp.CourseId == "" {
-			return h.DataNotFound(ctx)
-		}
-		converter, error := json.Marshal(resp)
-		if error != nil {
-			return h.DataReadError(ctx, error.Error())
-		}
-		if err := h.RedisClient.HSet(ctx, "QUIZ:"+quiz, user, string(converter)); err != nil {
-			return h.RedisWriteError(ctx, err.Error())
-		}
-		if resp.TimeClose != 0 {
-			if err := h.RedisClient.SetHashesExpire(ctx, "QUIZ:"+quiz, resp.TimeOpen, resp.TimeClose); err != nil {
-				return h.RedisWriteError(ctx, err.Error())
-			}
-		}
-		return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
-	}
-	converter := []byte(Redisresp)
-	err := json.Unmarshal(converter, &Response)
-	if err != nil {
-		return h.DataReadError(ctx, err.Error())
-	}
-	return h.AsJsonInterface(ctx, http.StatusOK, Response)
-
-}
-
-func (h HTTPHandler) GetQuizUserSQL(ctx *app.Context) *server.ResponseInterface {
-	//Declaring Variables
-	quiz := ctx.Param("quiz")
-	user := ctx.Param("user")
-	quizId, _ := strconv.Atoi(quiz)
-	userId, _ := strconv.Atoi(user)
-
-	resp, err := h.PrimaryService.GetQuizUser(ctx, quizId, userId)
-	if err != nil {
-		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
-	}
-	if resp.CourseId == "" {
+	if resp.Name == "" {
 		return h.DataNotFound(ctx)
 	}
 	return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
