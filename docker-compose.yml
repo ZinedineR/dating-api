@@ -1,0 +1,13 @@
+services:
+  redis:  
+    image: bitnami/redis:latest
+    privileged: true
+    user: root
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    # command: sysctl vm.overcommit_memory=1
+    volumes:
+      - ./redis/redis.conf:/opt/bitnami/redis/etc/redis.conf
+      # - /mnt/xvdb/redis:/usr/local/etc/redis
+    ports:
+      - "6379:6379"
