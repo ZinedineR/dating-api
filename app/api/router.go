@@ -7,9 +7,8 @@ import (
 )
 
 func (h *HttpServe) setupRouter() {
-	h.MoodleRoute("GET", "/quiz/:quiz", h.primaryHandler.GetQuiz)
-	h.MoodleRoute("GET", "/quiz-sql/:quiz/:user", h.primaryHandler.GetQuizUserSQL)
-	h.MoodleRoute("GET", "/quiz/:quiz/:user", h.primaryHandler.GetQuizUserRedis)
+	h.MoodleRoute("POST", "/profile", h.profileHandler.CreateProfile)
+	h.MoodleRoute("GET", "/verify/:id", h.profileHandler.UpdateVerification)
 }
 
 func (h *HttpServe) MoodleRoute(method, path string, f handler.HandlerFnInterface) {

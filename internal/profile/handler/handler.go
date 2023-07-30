@@ -6,13 +6,16 @@ import (
 
 	redis "dating-api/internal/base/service/redisser"
 
+	"dating-api/internal/profile/domain"
 	ProfileService "dating-api/internal/profile/service"
 
 	"dating-api/internal/base/app"
 	"dating-api/internal/base/handler"
+	"dating-api/pkg/mail"
 	"dating-api/pkg/server"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type HTTPHandler struct {
@@ -274,10 +277,13 @@ func (h HTTPHandler) ThrowBadRequestException(ctx *app.Context, message string) 
 
 func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface {
 	//Declaring Variables
-	id := ctx.Param("id")
-	Id, _ := strconv.Atoi(id)
+	idParam := ctx.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
 
-	resp, err := h.ProfileService.GetProfileData(ctx, Id)
+	resp, err := h.ProfileService.GetProfileData(ctx, id)
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
@@ -285,4 +291,54 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 		return h.DataNotFound(ctx)
 	}
 	return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
+}
+
+func (h HTTPHandler) CreateProfile(ctx *app.Context) *server.ResponseInterface {
+	age, _ := strconv.Atoi(ctx.PostForm("age"))
+	body := domain.Profile{
+		Name:        ctx.PostForm("name"),
+		Age:         age,
+		Sex:         ctx.PostForm("sex"),
+		Orientation: ctx.PostForm("orientation"),
+		Status:      ctx.PostForm("status"),
+		Email:       ctx.PostForm("email"),
+		Password:    ctx.PostForm("password"),
+	}
+	// if err := ctx.ShouldBind(&body); err != nil {
+	// 	return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	// }
+	if err := h.ProfileService.CreateProfile(ctx, &body); err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	preferences := domain.ProfilePreferences{
+		PeopleId: body.Id,
+	}
+	if err := h.ProfileService.CreateProfilePreferences(ctx, &preferences); err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	verification := domain.Verification{
+		PeopleId: body.Id,
+		Verified: false,
+	}
+	if err := h.ProfileService.CreateVerification(ctx, &verification); err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	mail.Verify_mail(&body)
+	return h.AsJsonInterface(ctx, http.StatusOK, body)
+}
+
+func (h HTTPHandler) UpdateVerification(ctx *app.Context) *server.ResponseInterface {
+	idParam := ctx.Param("id")
+	Id, err := uuid.Parse(idParam)
+	if err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	// model := &domain.Verification{
+	// 	PeopleId: Id,
+	// 	Verified: true,
+	// }
+	if err := h.ProfileService.UpdateVerification(ctx, Id); err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	return h.AsJsonInterface(ctx, http.StatusOK, "Account verified")
 }

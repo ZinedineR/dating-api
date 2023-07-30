@@ -14,9 +14,9 @@ import (
 	appConfiguration "dating-api/app/appconf"
 	"dating-api/internal/base/handler"
 	redis2 "dating-api/internal/base/service/redisser"
-	priHandler "dating-api/internal/primary/handler"
-	primaryRepo "dating-api/internal/primary/repository"
-	primaryService "dating-api/internal/primary/service"
+	proHandler "dating-api/internal/profile/handler"
+	profileRepo "dating-api/internal/profile/repository"
+	profileService "dating-api/internal/profile/service"
 	"dating-api/pkg/db"
 
 	"github.com/go-redis/redis/v8"
@@ -28,7 +28,7 @@ import (
 var (
 	appConf            *appConfiguration.Config
 	baseHandler        *handler.BaseHTTPHandler
-	primaryHandler     *priHandler.HTTPHandler
+	profileHandler     *proHandler.HTTPHandler
 	redisClient        redis2.RedisClient
 	postgresClientRepo *db.PostgreSQLClientRepository
 	httpClient         httpclient.Client
@@ -113,6 +113,7 @@ func initPostgreSQL() {
 	}
 
 	postgresClientRepo, _ = db.NewMPostgreSQLRepository(host, uname, pass, dbname, port, gConfig)
+	migration.Initmigrate(postgresClientRepo.DB)
 
 }
 
@@ -124,9 +125,9 @@ func initHTTP() {
 
 	baseHandler = handler.NewBaseHTTPHandler(postgresClientRepo.DB, appConf, postgresClientRepo, redisClient,
 		httpClient)
-	primaryRepo := primaryRepo.NewRepository(postgresClientRepo.DB, postgresClientRepo)
-	primaryService := primaryService.NewService(primaryRepo, httpClient)
-	primaryHandler = priHandler.NewHTTPHandler(baseHandler, primaryService, redisClient)
+	profileRepo := profileRepo.NewRepository(postgresClientRepo.DB, postgresClientRepo)
+	profileService := profileService.NewService(profileRepo, httpClient)
+	profileHandler = proHandler.NewHTTPHandler(baseHandler, profileService, redisClient)
 }
 
 func initInfrastructure() {
@@ -141,7 +142,7 @@ func initInfrastructure() {
 	// }
 	initPostgreSQL()
 	initLog()
-	migration.Initmigrate()
+
 	httpClientFactory := httpclient.New()
 	httpClient = httpClientFactory.CreateClient(redisClient)
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"dating-api/internal/base/handler"
-	priHandler "dating-api/internal/primary/handler"
+	proHandler "dating-api/internal/profile/handler"
 	"dating-api/pkg/server"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ import (
 type HttpServe struct {
 	router         *gin.Engine
 	base           *handler.BaseHTTPHandler
-	primaryHandler *priHandler.HTTPHandler
+	profileHandler *proHandler.HTTPHandler
 }
 
 func (h *HttpServe) Run() error {
@@ -30,7 +30,7 @@ func (h *HttpServe) Run() error {
 	return h.router.Run(fmt.Sprintf(":%s", os.Getenv("HTTP_SERVER_PORT")))
 }
 
-func New(appName string, base *handler.BaseHTTPHandler, primary *priHandler.HTTPHandler) server.App {
+func New(appName string, base *handler.BaseHTTPHandler, profile *proHandler.HTTPHandler) server.App {
 
 	if os.Getenv("APP_ENV") != "production" {
 		if os.Getenv("DEV_SHOW_ROUTE") == "False" {
@@ -64,6 +64,6 @@ func New(appName string, base *handler.BaseHTTPHandler, primary *priHandler.HTTP
 	return &HttpServe{
 		router:         r,
 		base:           base,
-		primaryHandler: primary,
+		profileHandler: profile,
 	}
 }

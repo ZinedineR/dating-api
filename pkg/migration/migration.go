@@ -2,27 +2,25 @@ package migration
 
 import (
 	"fmt"
-	"os"
 	"sort"
 
 	profileDomain "dating-api/internal/profile/domain"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func Initmigrate() {
+func Initmigrate(db *gorm.DB) {
 	// port, _ := strconv.Atoi(os.Getenv("DB_PORT"))
 	// dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USERNAME"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"))
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{SkipDefaultTransaction: true})
-	checkError(err)
+	// dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	// 	os.Getenv("DB_HOST"),
+	// 	os.Getenv("DB_PORT"),
+	// 	os.Getenv("DB_USERNAME"),
+	// 	os.Getenv("DB_PASSWORD"),
+	// 	os.Getenv("DB_NAME"))
+	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{SkipDefaultTransaction: true})
+	// checkError(err)
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -32,9 +30,13 @@ func Initmigrate() {
 	executePendingMigrations(db)
 
 	// Migrate rest of the models
-	logrus.Infoln(fmt.Println("AutoMigrate Model [table_name]"))
+	logrus.Info(fmt.Println("AutoMigrate Model [table_name]"))
 	db.AutoMigrate(&profileDomain.Profile{})
-	logrus.Infoln(fmt.Println("  TableModel [" + (&profileDomain.Profile{}).TableName() + "]"))
+	logrus.Info(fmt.Println("  TableModel [" + (&profileDomain.Profile{}).TableName() + "]"))
+	db.AutoMigrate(&profileDomain.ProfilePreferences{})
+	logrus.Info(fmt.Println("  TableModel [" + (&profileDomain.ProfilePreferences{}).TableName() + "]"))
+	db.AutoMigrate(&profileDomain.Verification{})
+	logrus.Info(fmt.Println("  TableModel [" + (&profileDomain.Verification{}).TableName() + "]"))
 
 	// db.AutoMigrate(&entity.Users{})
 	// log.Info().Msg("  TableModel [" + (&entity.Users{}).TableName() + "]")
