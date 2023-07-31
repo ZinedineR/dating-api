@@ -3,14 +3,15 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"os"
-	"strconv"
-	"time"
 )
 
 type PostgreSQLClientRepository struct {
@@ -26,7 +27,13 @@ func NewMPostgreSQLRepository(host, uname, pass, dbname string, port int, config
 	}
 	maxIdleConn, _ := strconv.Atoi(os.Getenv("DB_MAX_IDLE_CONNECTION"))
 	lifetimeConn, _ := time.ParseDuration(os.Getenv("DB_MAX_LIFETIME_CONNECTION"))
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s", host, uname, pass, dbname, port, tz)
+	var dsn string
+	if os.Getenv("APP_ENV") == "development" {
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s", host, uname, pass, dbname, port, tz)
+	} else {
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=require TimeZone=%s", host, uname, pass, dbname, port, tz)
+
+	}
 	sqlDB, err := sql.Open("pgx", dsn)
 
 	sqlDB.SetMaxIdleConns(maxIdleConn)
