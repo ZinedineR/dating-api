@@ -16,13 +16,28 @@ type repo struct {
 	base *baseModel.PostgreSQLClientRepository
 }
 
-func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.Profile, errs.Error) {
+func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.ProfileData, errs.Error) {
+	var (
+		models *domain.ProfileData
+	)
+	if err := r.db.WithContext(ctx).
+		Model(&domain.Profile{}).
+		Take(&models, Id).
+		Error; err != nil {
+		return nil, errs.Wrap(err)
+	}
+	return models, nil
+
+}
+
+func (r repo) GetProfileFullData(ctx context.Context, email, password string) (*domain.Profile, errs.Error) {
 	var (
 		models *domain.Profile
 	)
 	if err := r.db.WithContext(ctx).
 		Model(&domain.Profile{}).
-		Take(&models, Id).
+		Where("email = ?", email).
+		First(&models).
 		Error; err != nil {
 		return nil, errs.Wrap(err)
 	}

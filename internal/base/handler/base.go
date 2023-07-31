@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"dating-api/pkg/httpclient"
+	"dating-api/pkg/jwthelper"
 
 	"github.com/sirupsen/logrus"
 
@@ -91,7 +92,26 @@ func (b BaseHTTPHandler) MoodleRunAction(handler HandlerFnInterface) gin.Handler
 			})
 			return
 		}
-
+		tokenString := ctx.GetHeader("Authorization")
+		if tokenString == "" {
+			logrus.Errorln(fmt.Sprintf("REQUEST ID: %s , message: Unauthorized", ctx.APIReqID))
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "request does not contain an access token",
+				"data":    err.Error(),
+			})
+			return
+		}
+		err = jwthelper.ValidateToken(tokenString)
+		if err != nil {
+			logrus.Errorln(fmt.Sprintf("REQUEST ID: %s , message: Unauthorized", ctx.APIReqID))
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  http.StatusUnauthorized,
+				"message": "Token Error",
+				"data":    err.Error(),
+			})
+			return
+		}
 		defer func() {
 			if err0 := recover(); err0 != nil {
 				logrus.Errorln(err0)

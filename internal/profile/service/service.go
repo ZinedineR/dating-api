@@ -23,8 +23,16 @@ type service struct {
 	httpClient httpclient.Client
 }
 
-func (s service) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.Profile, errs.Error) {
+func (s service) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.ProfileData, errs.Error) {
 	result, err := s.authRepo.GetProfileData(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) Login(ctx context.Context, email, password string) (*domain.Profile, errs.Error) {
+	result, err := s.authRepo.GetProfileFullData(ctx, email, password)
 	if err != nil {
 		return nil, err
 	}

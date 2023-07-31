@@ -11,7 +11,8 @@ import (
 
 type Service interface {
 	CreateProfilePreferences(ctx context.Context, model *domain.ProfilePreferences) errs.Error
-	GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.Profile, errs.Error)
+	Login(ctx context.Context, email, password string) (*domain.Profile, errs.Error)
+	GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.ProfileData, errs.Error)
 	CreateProfile(ctx context.Context, model *domain.Profile) errs.Error
 	CreateVerification(ctx context.Context, model *domain.Verification) errs.Error
 	UpdateVerification(ctx context.Context, Id uuid.UUID) errs.Error

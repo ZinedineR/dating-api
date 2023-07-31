@@ -11,6 +11,7 @@ import (
 
 	"dating-api/internal/base/app"
 	"dating-api/internal/base/handler"
+	"dating-api/pkg/jwthelper"
 	"dating-api/pkg/mail"
 	"dating-api/pkg/server"
 
@@ -58,6 +59,27 @@ func (h HTTPHandler) AsInvalidPrivateKeyError(ctx *gin.Context) {
 	ctx.JSON(http.StatusUnauthorized, gin.H{
 		"responseCode":    "4010000",
 		"responseMessage": "Invalid Private Key",
+	})
+}
+
+func (h HTTPHandler) AsDatabaseError(ctx *gin.Context) {
+	ctx.JSON(http.StatusInternalServerError, gin.H{
+		"responseCode":    "500",
+		"responseMessage": "Error in database",
+	})
+}
+
+func (h HTTPHandler) AsDataNotFound(ctx *gin.Context) {
+	ctx.JSON(http.StatusNotFound, gin.H{
+		"responseCode":    "404",
+		"responseMessage": "Data not Found",
+	})
+}
+
+func (h HTTPHandler) AsPasswordUnmatched(ctx *gin.Context) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "401",
+		"responseMessage": "Password Unmatched",
 	})
 }
 
@@ -127,7 +149,7 @@ func (h HTTPHandler) AsRequiredClientSecretError(ctx *gin.Context) {
 func (h HTTPHandler) AsRequiredClientIdError(ctx *gin.Context) {
 	ctx.JSON(http.StatusBadRequest, gin.H{
 		"responseCode":    "4000000",
-		"responseMessage": "The clientId field is required.",
+		"responseMessage": "The param ID is required.",
 	})
 }
 
@@ -287,13 +309,44 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
-	if resp.Name == "" {
+	if resp.Id == uuid.Nil {
 		return h.DataNotFound(ctx)
 	}
 	return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
 }
 
-func (h HTTPHandler) CreateProfile(ctx *app.Context) *server.ResponseInterface {
+func (h HTTPHandler) Login(ctx *gin.Context) {
+	//Declaring Variables
+	request := domain.ProfileLogin{
+		Email:    ctx.PostForm("email"),
+		Password: ctx.PostForm("password"),
+	}
+	resp, err := h.ProfileService.Login(ctx, request.Email, request.Password)
+	if err != nil {
+		// return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+		h.AsDatabaseError(ctx)
+		return
+
+	}
+	if resp.Id == uuid.Nil {
+		h.AsDataNotFound(ctx)
+		return
+	}
+	if err := resp.CheckPassword(request.Password); err != nil {
+		h.AsPasswordUnmatched(ctx)
+		return
+	}
+	tokenString, err := jwthelper.GenerateJWT(*resp)
+	if err != nil {
+		h.AsInvalidTokenError(ctx)
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"token": tokenString,
+	})
+}
+
+func (h HTTPHandler) CreateProfile(ctx *gin.Context) {
 	age, _ := strconv.Atoi(ctx.PostForm("age"))
 	body := domain.Profile{
 		Name:        ctx.PostForm("name"),
@@ -307,38 +360,54 @@ func (h HTTPHandler) CreateProfile(ctx *app.Context) *server.ResponseInterface {
 	// if err := ctx.ShouldBind(&body); err != nil {
 	// 	return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	// }
-	if err := h.ProfileService.CreateProfile(ctx, &body); err != nil {
-		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	if err := body.HashPassword(body.Password); err != nil {
+		h.AsPasswordUnmatched(ctx)
+		return
 	}
+
+	if err := h.ProfileService.CreateProfile(ctx, &body); err != nil {
+		h.AsDatabaseError(ctx)
+		return
+	}
+
 	preferences := domain.ProfilePreferences{
 		PeopleId: body.Id,
 	}
 	if err := h.ProfileService.CreateProfilePreferences(ctx, &preferences); err != nil {
-		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+		h.AsDatabaseError(ctx)
+		return
 	}
 	verification := domain.Verification{
 		PeopleId: body.Id,
 		Verified: false,
 	}
 	if err := h.ProfileService.CreateVerification(ctx, &verification); err != nil {
-		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+		h.AsDatabaseError(ctx)
+		return
 	}
-	mail.Verify_mail(&body)
-	return h.AsJsonInterface(ctx, http.StatusOK, body)
+
+	if err := mail.Verify_mail(&body); err != nil {
+		h.AsPasswordUnmatched(ctx)
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"Message": "Account created, check your email for verification",
+		"Id":      body.Id.String(),
+	})
 }
 
-func (h HTTPHandler) UpdateVerification(ctx *app.Context) *server.ResponseInterface {
+func (h HTTPHandler) UpdateVerification(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	Id, err := uuid.Parse(idParam)
 	if err != nil {
-		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+		h.AsRequiredClientIdError(ctx)
+		return
 	}
-	// model := &domain.Verification{
-	// 	PeopleId: Id,
-	// 	Verified: true,
-	// }
 	if err := h.ProfileService.UpdateVerification(ctx, Id); err != nil {
-		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+		h.AsDataNotFound(ctx)
+		return
 	}
-	return h.AsJsonInterface(ctx, http.StatusOK, "Account verified")
+	ctx.JSON(http.StatusOK, gin.H{
+		"Message": "Account verified",
+	})
 }

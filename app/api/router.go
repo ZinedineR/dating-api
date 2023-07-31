@@ -7,8 +7,14 @@ import (
 )
 
 func (h *HttpServe) setupRouter() {
-	h.MoodleRoute("POST", "/profile", h.profileHandler.CreateProfile)
-	h.MoodleRoute("GET", "/verify/:id", h.profileHandler.UpdateVerification)
+	//authentication API
+	v1 := h.router.Group("/authentication")
+	v1.POST("/login", h.profileHandler.Login)
+	v1.POST("/profile", h.profileHandler.CreateProfile)
+	v1.GET("/verify/:id", h.profileHandler.UpdateVerification)
+	// h.MoodleRoute("POST", "/profile", h.profileHandler.CreateProfile)
+	h.MoodleRoute("GET", "/profile/:id", h.profileHandler.GetProfileData)
+	// h.MoodleRoute("GET", "/verify/:id", h.profileHandler.UpdateVerification)
 }
 
 func (h *HttpServe) MoodleRoute(method, path string, f handler.HandlerFnInterface) {
