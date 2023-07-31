@@ -323,7 +323,6 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 	}
 	resp, err := h.ProfileService.Login(ctx, request.Email, request.Password)
 	if err != nil {
-		// return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 		h.AsDatabaseError(ctx)
 		return
 
@@ -336,7 +335,14 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 		h.AsPasswordUnmatched(ctx)
 		return
 	}
-	tokenString, err := jwthelper.GenerateJWT(*resp)
+	verified, err := h.ProfileService.CheckVerified(ctx, resp.Id)
+	if err != nil {
+		h.AsDatabaseError(ctx)
+		return
+
+	}
+
+	tokenString, err := jwthelper.GenerateJWT(*resp, *verified)
 	if err != nil {
 		h.AsInvalidTokenError(ctx)
 		return
@@ -408,6 +414,6 @@ func (h HTTPHandler) UpdateVerification(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{
-		"Message": "Account verified",
+		"Message": "Account verified, please relogin",
 	})
 }

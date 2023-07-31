@@ -39,6 +39,14 @@ func (s service) Login(ctx context.Context, email, password string) (*domain.Pro
 	return result, nil
 }
 
+func (s service) CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.Error) {
+	result, err := s.authRepo.CheckVerified(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (s service) CreateProfilePreferences(ctx context.Context, model *domain.ProfilePreferences) errs.Error {
 	if model.Id == uuid.Nil {
 		model.Id = uuid.New()

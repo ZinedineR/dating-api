@@ -30,6 +30,21 @@ func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.Profile
 
 }
 
+func (r repo) CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.Error) {
+	var (
+		model *domain.Verification
+	)
+	if err := r.db.WithContext(ctx).
+		Model(&domain.Verification{}).
+		Where("people_id = ?", Id).
+		First(&model).
+		Error; err != nil {
+		return nil, errs.Wrap(err)
+	}
+	return &model.Verified, nil
+
+}
+
 func (r repo) GetProfileFullData(ctx context.Context, email, password string) (*domain.Profile, errs.Error) {
 	var (
 		models *domain.Profile
@@ -76,7 +91,7 @@ func (r repo) CreateVerification(ctx context.Context, model *domain.Verification
 }
 
 func (r repo) UpdateVerification(ctx context.Context, Id uuid.UUID) errs.Error {
-	if err := r.db.Debug().WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Model(&domain.Verification{}).
 		Where("people_id = ?", Id).
 		Update("verified", true).Error; err != nil {

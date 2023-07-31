@@ -12,6 +12,7 @@ import (
 type Repository interface {
 	CreateProfilePreferences(ctx context.Context, model *domain.ProfilePreferences) errs.Error
 	GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.ProfileData, errs.Error)
+	CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.Error)
 	GetProfileFullData(ctx context.Context, email, password string) (*domain.Profile, errs.Error)
 	CreateProfile(ctx context.Context, model *domain.Profile) errs.Error
 	CreateVerification(ctx context.Context, model *domain.Verification) errs.Error
