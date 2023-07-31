@@ -5,14 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"dating-api/pkg/httpclient"
 	"dating-api/pkg/jwthelper"
 
 	"github.com/sirupsen/logrus"
 
 	"dating-api/app/appconf"
 	"dating-api/internal/base/app"
-	redis "dating-api/internal/base/service/redisser"
 	baseModel "dating-api/pkg/db"
 	"dating-api/pkg/server"
 
@@ -24,26 +22,20 @@ type HandlerFn func(ctx *app.Context) *server.Response
 type HandlerFnInterface func(ctx *app.Context) *server.ResponseInterface
 
 type BaseHTTPHandler struct {
-	Handlers    interface{}
-	DB          *gorm.DB
-	AppConfig   *appconf.Config
-	BaseModel   *baseModel.PostgreSQLClientRepository
-	RedisClient redis.RedisClient
-	HttpClient  httpclient.Client
+	Handlers  interface{}
+	DB        *gorm.DB
+	AppConfig *appconf.Config
+	BaseModel *baseModel.PostgreSQLClientRepository
 }
 
 func NewBaseHTTPHandler(db *gorm.DB,
 	appConfig *appconf.Config,
 	baseModel *baseModel.PostgreSQLClientRepository,
-	redisClient redis.RedisClient,
-	httpClient httpclient.Client,
 ) *BaseHTTPHandler {
 	return &BaseHTTPHandler{
-		DB:          db,
-		AppConfig:   appConfig,
-		BaseModel:   baseModel,
-		RedisClient: redisClient,
-		HttpClient:  httpClient,
+		DB:        db,
+		AppConfig: appConfig,
+		BaseModel: baseModel,
 	}
 }
 

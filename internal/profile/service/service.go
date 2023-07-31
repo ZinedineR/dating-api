@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"dating-api/pkg/httpclient"
-
 	"dating-api/internal/profile/domain"
 	"dating-api/internal/profile/repository"
 	"dating-api/pkg/errs"
@@ -14,13 +12,12 @@ import (
 )
 
 // NewService creates new user service
-func NewService(repo repository.Repository, httpClient httpclient.Client) Service {
-	return &service{authRepo: repo, httpClient: httpClient}
+func NewService(repo repository.Repository) Service {
+	return &service{authRepo: repo}
 }
 
 type service struct {
-	authRepo   repository.Repository
-	httpClient httpclient.Client
+	authRepo repository.Repository
 }
 
 func (s service) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.ProfileData, errs.Error) {

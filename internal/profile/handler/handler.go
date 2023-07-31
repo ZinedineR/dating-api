@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	redis "dating-api/internal/base/service/redisser"
-
 	"dating-api/internal/profile/domain"
 	ProfileService "dating-api/internal/profile/service"
 
@@ -22,14 +20,12 @@ import (
 type HTTPHandler struct {
 	App            *handler.BaseHTTPHandler
 	ProfileService ProfileService.Service
-	RedisClient    redis.RedisClient
 }
 
-func NewHTTPHandler(handler *handler.BaseHTTPHandler, ProfileService ProfileService.Service, redisClient redis.RedisClient) *HTTPHandler {
+func NewHTTPHandler(handler *handler.BaseHTTPHandler, ProfileService ProfileService.Service) *HTTPHandler {
 	return &HTTPHandler{
 		App:            handler,
 		ProfileService: ProfileService,
-		RedisClient:    redisClient,
 	}
 }
 
@@ -254,20 +250,6 @@ func (h HTTPHandler) DataReadError(ctx *app.Context, description string) *server
 		Message:    description,
 	}
 	return h.App.AsJsonInterface(ctx, http.StatusNotFound, resp)
-}
-
-// RedisWriteError return AsJsonInterface error if persist a problem in writing data to Redis
-func (h HTTPHandler) RedisWriteError(ctx *app.Context, description string) *server.ResponseInterface {
-	type Response struct {
-		StatusCode int         `json:"responseCode"`
-		Message    interface{} `json:"responseMessage"`
-	}
-	resp := Response{
-		StatusCode: http.StatusUnsupportedMediaType,
-		Message:    description,
-	}
-	return h.App.AsJsonInterface(ctx, http.StatusNotFound, resp)
-
 }
 
 // AsJson always return httpStatus: 200, but Status field: 500,400,200...

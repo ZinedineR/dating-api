@@ -1,25 +1,21 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strconv"
 
-	"dating-api/pkg/httpclient"
 	"dating-api/pkg/migration"
 
 	appConfiguration "dating-api/app/appconf"
 	"dating-api/internal/base/handler"
-	redis2 "dating-api/internal/base/service/redisser"
 	proHandler "dating-api/internal/profile/handler"
 	profileRepo "dating-api/internal/profile/repository"
 	profileService "dating-api/internal/profile/service"
 	"dating-api/pkg/db"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -29,68 +25,8 @@ var (
 	appConf            *appConfiguration.Config
 	baseHandler        *handler.BaseHTTPHandler
 	profileHandler     *proHandler.HTTPHandler
-	redisClient        redis2.RedisClient
 	postgresClientRepo *db.PostgreSQLClientRepository
-	httpClient         httpclient.Client
 )
-
-// func initRedisCluster() {
-// 	var ctx = context.TODO()
-// 	redisHostList := strings.Split(os.Getenv("REDIS_HOST_CLUSTER"), ",")
-// 	r := redis.NewClusterClient(&redis.ClusterOptions{
-// 		Addrs:       redisHostList,
-// 		MaxRetries:  3,
-// 		DialTimeout: 10 * time.Second,
-// 	})
-// 	err := r.Ping(ctx).Err()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	log.Print("Redis Cluster ping successful")
-// 	redisClient = redis2.NewRedisClusterClient(r)
-// }
-
-// func initRedisSentinel() {
-// 	var ctx = context.TODO()
-
-// 	redisSentinelHost := strings.Split(os.Getenv("REDIS_SENTINEL_HOST"), ",")
-
-// 	r := redis.NewFailoverClusterClient(&redis.FailoverOptions{
-// 		MasterName:    "mymaster",
-// 		SentinelAddrs: redisSentinelHost,
-// 		MaxRetries:    3,
-// 		DialTimeout:   10 * time.Second,
-
-// 		// To route commands by latency or randomly, enable one of the following.
-// 		RouteByLatency: true,
-// 		//RouteRandomly: true,
-// 	})
-
-// 	err := r.Ping(ctx).Err()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	log.Print("Redis Sentinel ping successful")
-// }
-
-func initRedis() {
-	var ctx = context.TODO()
-	rdb, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
-	r := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       rdb,
-	})
-
-	err := r.Ping(ctx).Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	redisClient = redis2.NewRedisClient(r)
-}
 
 func initPostgreSQL() {
 	host := os.Getenv("DB_HOST")
@@ -123,28 +59,16 @@ func initHTTP() {
 
 	appConf.MysqlTZ = postgresClientRepo.TZ
 
-	baseHandler = handler.NewBaseHTTPHandler(postgresClientRepo.DB, appConf, postgresClientRepo, redisClient,
-		httpClient)
+	baseHandler = handler.NewBaseHTTPHandler(postgresClientRepo.DB, appConf, postgresClientRepo)
 	profileRepo := profileRepo.NewRepository(postgresClientRepo.DB, postgresClientRepo)
-	profileService := profileService.NewService(profileRepo, httpClient)
-	profileHandler = proHandler.NewHTTPHandler(baseHandler, profileService, redisClient)
+	profileService := profileService.NewService(profileRepo)
+	profileHandler = proHandler.NewHTTPHandler(baseHandler, profileService)
 }
 
 func initInfrastructure() {
-	// useRedisCluster := os.Getenv("USE_REDIS_CLUSTER")
-	// if useRedisCluster == "true" {
-	// 	// initRedisCluster()
-	// 	initRedisSentinel()
-	// } else if useRedisCluster == "false" {
-	initRedis()
-	// } else {
-	// 	log.Panic("Input either true or false on USE_REDIS_CLUSTER env")
-	// }
 	initPostgreSQL()
 	initLog()
 
-	httpClientFactory := httpclient.New()
-	httpClient = httpClientFactory.CreateClient(redisClient)
 }
 
 func isProd() bool {
