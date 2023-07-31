@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
 )
 
 var rootCmd = &cobra.Command{
@@ -17,19 +16,19 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-//register command
+// register command
 func init() {
 	rootCmd.AddCommand(HttpCmd)
 
 	//load environment variable
-	if err := godotenv.Load(); err != nil {
-		if os.Getenv("APP_ENV") == "development" {
-			logrus.Fatalln("unable to load environment variable", err.Error())
-		} else {
-			logrus.Warningln("Can't find env.file. To use system's env vars for now")
-		}
+	// if err := godotenv.Load(); err != nil {
+	// 	if os.Getenv("APP_ENV") == "development" {
+	// 		logrus.Fatalln("unable to load environment variable", err.Error())
+	// 	} else {
+	// 		logrus.Warningln("Can't find env.file. To use system's env vars for now")
+	// 	}
 
-	}
+	// }
 }
 
 func Execute() error {
