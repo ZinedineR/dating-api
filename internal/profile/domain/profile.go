@@ -45,6 +45,19 @@ func (model *Profile) TableName() string {
 	return ProfileTableName
 }
 
+func (model *Profile) CheckData() string {
+	if model.Sex != "male" && model.Sex != "female" && model.Sex != "non-binary" {
+		return "Wrong input, you can only input male/female/non-binary"
+	}
+	if model.Age <= 18 {
+		return "You must be above 18 to use this app"
+	}
+	if model.Orientation != "straight" && model.Orientation != "gay" && model.Orientation != "experiment" {
+		return "Wrong input, you can only input straight/gay/experiment"
+	}
+	return ""
+}
+
 func (model *Profile) HashPassword(password string) error {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"dating-api/internal/profile/domain"
 	ProfileService "dating-api/internal/profile/service"
@@ -65,6 +66,13 @@ func (h HTTPHandler) AsDatabaseError(ctx *gin.Context) {
 	})
 }
 
+func (h HTTPHandler) AsDuplicateEmail(ctx *gin.Context) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "401",
+		"responseMessage": "Another account with same email already created",
+	})
+}
+
 func (h HTTPHandler) AsDataNotFound(ctx *gin.Context) {
 	ctx.JSON(http.StatusNotFound, gin.H{
 		"responseCode":    "404",
@@ -72,10 +80,38 @@ func (h HTTPHandler) AsDataNotFound(ctx *gin.Context) {
 	})
 }
 
+func (h HTTPHandler) AsJWTExist(ctx *gin.Context) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "401",
+		"responseMessage": "You already login before",
+	})
+}
+
 func (h HTTPHandler) AsPasswordUnmatched(ctx *gin.Context) {
 	ctx.JSON(http.StatusUnauthorized, gin.H{
 		"responseCode":    "401",
 		"responseMessage": "Password Unmatched",
+	})
+}
+
+func (h HTTPHandler) AsHashError(ctx *gin.Context) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "500",
+		"responseMessage": "Error in hashing",
+	})
+}
+
+func (h HTTPHandler) AsDataUnauthorized(ctx *gin.Context, message string) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "401",
+		"responseMessage": message,
+	})
+}
+
+func (h HTTPHandler) AsEmailNotFound(ctx *gin.Context) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "401",
+		"responseMessage": "Can't send email, contact admin for verification",
 	})
 }
 
@@ -239,17 +275,17 @@ func (h HTTPHandler) DataNotFound(ctx *app.Context) *server.ResponseInterface {
 
 }
 
-// DataReadError return AsJsonInterface error if persist a problem in encoding/decoding JSON data
-func (h HTTPHandler) DataReadError(ctx *app.Context, description string) *server.ResponseInterface {
+// DataReadError return AsJsonInterface error if persist a problem in declared condition
+func (h HTTPHandler) DataReadError(ctx *app.Context, code int, description string) *server.ResponseInterface {
 	type Response struct {
 		StatusCode int         `json:"responseCode"`
 		Message    interface{} `json:"responseMessage"`
 	}
 	resp := Response{
-		StatusCode: http.StatusUnsupportedMediaType,
+		StatusCode: code,
 		Message:    description,
 	}
-	return h.App.AsJsonInterface(ctx, http.StatusNotFound, resp)
+	return h.App.AsJsonInterface(ctx, code, resp)
 }
 
 // AsJson always return httpStatus: 200, but Status field: 500,400,200...
@@ -281,13 +317,41 @@ func (h HTTPHandler) ThrowBadRequestException(ctx *app.Context, message string) 
 
 func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface {
 	//Declaring Variables
-	idParam := ctx.Param("id")
-	id, err := uuid.Parse(idParam)
+	// idParam := ctx.Param("id")
+	// id, err := uuid.Parse(idParam)
+	// if err != nil {
+	// 	return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	// }
+
+	tokenString := ctx.GetHeader("Authorization")
+	JWTRead, err := jwthelper.TokenRead(tokenString)
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
-
-	resp, err := h.ProfileService.GetProfileData(ctx, id)
+	if JWTRead.Account == "free" {
+		if JWTRead.LastLogin.Day() == time.Now().Day() {
+			viewCount, err := h.ProfileService.CheckView(ctx, JWTRead.Id)
+			if err != nil {
+				return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+			}
+			if *viewCount == 10 {
+				return h.DataReadError(ctx, http.StatusUnauthorized, "Sorry your view limit reached, please upgrade your account")
+			} else {
+				resp, err := h.ProfileService.GetProfileData(ctx, JWTRead.Id, JWTRead.Sex, JWTRead.Orientation)
+				if err != nil {
+					return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+				}
+				if resp.Id == uuid.Nil {
+					return h.DataNotFound(ctx)
+				}
+				if err := h.ProfileService.UpdateView(ctx, JWTRead.Id); err != nil {
+					return h.DataReadError(ctx, http.StatusBadRequest, "Error in updating view")
+				}
+				return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
+			}
+		}
+	}
+	resp, err := h.ProfileService.GetProfileData(ctx, JWTRead.Id, JWTRead.Sex, JWTRead.Orientation)
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
@@ -299,11 +363,12 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 
 func (h HTTPHandler) Login(ctx *gin.Context) {
 	//Declaring Variables
+	var tokenString string
 	request := domain.ProfileLogin{
 		Email:    ctx.PostForm("email"),
 		Password: ctx.PostForm("password"),
 	}
-	resp, err := h.ProfileService.Login(ctx, request.Email, request.Password)
+	resp, err := h.ProfileService.Login(ctx, request.Email)
 	if err != nil {
 		h.AsDatabaseError(ctx)
 		return
@@ -323,12 +388,47 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 		return
 
 	}
-
-	tokenString, err := jwthelper.GenerateJWT(*resp, *verified)
+	checkJWT, err := h.ProfileService.CheckJWT(ctx, resp.Id)
 	if err != nil {
-		h.AsInvalidTokenError(ctx)
+		h.AsDatabaseError(ctx)
 		return
+
+	} else if checkJWT.Jwt == "" {
+		tokenString, err = jwthelper.GenerateJWT(*resp, *verified)
+		if err != nil {
+			h.AsInvalidTokenError(ctx)
+			return
+		}
+		if err := h.ProfileService.StoreJWT(ctx, tokenString, resp.Id); err != nil {
+			h.AsDataNotFound(ctx)
+			return
+		}
+		if err := h.ProfileService.ResetView(ctx, resp.Id); err != nil {
+			h.AsDatabaseError(ctx)
+			return
+		}
+	} else if checkJWT.Jwt != "" {
+		JWTRead, err := jwthelper.TokenRead(checkJWT.Jwt)
+		if err != nil {
+			h.AsInvalidTokenError(ctx)
+			return
+		}
+		if JWTRead.LastLogin.Day() == time.Now().Day() {
+			h.AsJWTExist(ctx)
+			return
+		} else {
+			if err := h.ProfileService.StoreJWT(ctx, tokenString, resp.Id); err != nil {
+				h.AsDataNotFound(ctx)
+				return
+			}
+			if err := h.ProfileService.ResetView(ctx, resp.Id); err != nil {
+				h.AsDatabaseError(ctx)
+				return
+			}
+
+		}
 	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"token": tokenString,
 	})
@@ -348,8 +448,21 @@ func (h HTTPHandler) CreateProfile(ctx *gin.Context) {
 	// if err := ctx.ShouldBind(&body); err != nil {
 	// 	return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	// }
+	if bodyCheck := body.CheckData(); bodyCheck != "" {
+		h.AsDataUnauthorized(ctx, bodyCheck)
+		return
+	}
+
+	if emailCheck, err := h.ProfileService.Login(ctx, body.Email); err != nil {
+		h.AsDatabaseError(ctx)
+		return
+	} else if emailCheck.Email != "" {
+		h.AsDuplicateEmail(ctx)
+		return
+	}
+
 	if err := body.HashPassword(body.Password); err != nil {
-		h.AsPasswordUnmatched(ctx)
+		h.AsHashError(ctx)
 		return
 	}
 
@@ -375,7 +488,7 @@ func (h HTTPHandler) CreateProfile(ctx *gin.Context) {
 	}
 
 	if err := mail.Verify_mail(&body); err != nil {
-		h.AsPasswordUnmatched(ctx)
+		h.AsEmailNotFound(ctx)
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{

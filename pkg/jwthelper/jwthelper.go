@@ -36,7 +36,7 @@ func GenerateJWT(data domain.Profile, verified bool) (tokenString string, err er
 		Sex:         data.Sex,
 		Orientation: data.Orientation,
 		Status:      data.Status,
-		Account:     data.Email,
+		Account:     data.Account,
 		Email:       data.Email,
 		Password:    data.Password,
 		LastLogin:   time.Now(),
