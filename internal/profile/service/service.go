@@ -20,16 +20,46 @@ type service struct {
 	authRepo repository.Repository
 }
 
-func (s service) GetProfileData(ctx context.Context, Id uuid.UUID) (*domain.ProfileData, errs.Error) {
-	result, err := s.authRepo.GetProfileData(ctx, Id)
+func (s service) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation, list string) (*domain.ProfileData, errs.Error) {
+	result, err := s.authRepo.GetProfileData(ctx, Id, sex, orientation, list)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (s service) Login(ctx context.Context, email, password string) (*domain.Profile, errs.Error) {
-	result, err := s.authRepo.GetProfileFullData(ctx, email, password)
+func (s service) Login(ctx context.Context, email string) (*domain.Profile, errs.Error) {
+	result, err := s.authRepo.GetProfileFullData(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) CheckAccount(ctx context.Context, Id uuid.UUID) (*string, errs.Error) {
+	result, err := s.authRepo.CheckAccount(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) UpgradeAccount(ctx context.Context, Id uuid.UUID) errs.Error {
+	if err := s.authRepo.UpgradeAccount(ctx, Id); err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
+}
+
+func (s service) StoreJWT(ctx context.Context, jwt string, Id uuid.UUID) errs.Error {
+	if err := s.authRepo.StoreJWT(ctx, jwt, Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s service) CheckJWT(ctx context.Context, Id uuid.UUID) (*domain.ProfilePreferences, errs.Error) {
+	result, err := s.authRepo.CheckJWT(ctx, Id)
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +74,46 @@ func (s service) CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.E
 	return result, nil
 }
 
+func (s service) CheckLikePass(ctx context.Context, Id uuid.UUID) (*string, errs.Error) {
+	result, err := s.authRepo.CheckLikePass(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) UpdateLikePass(ctx context.Context, Id, target uuid.UUID, parameter string) errs.Error {
+	if err := s.authRepo.UpdateLikePass(ctx, Id, target, parameter); err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
+}
+
+func (s service) CheckView(ctx context.Context, Id uuid.UUID) (*int, errs.Error) {
+	result, err := s.authRepo.CheckView(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) UpdateView(ctx context.Context, Id uuid.UUID) errs.Error {
+	if err := s.authRepo.UpdateView(ctx, Id); err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
+}
+
+func (s service) ResetView(ctx context.Context, Id uuid.UUID) errs.Error {
+	if err := s.authRepo.ResetView(ctx, Id); err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
+}
+
 func (s service) CreateProfilePreferences(ctx context.Context, model *domain.ProfilePreferences) errs.Error {
 	if model.Id == uuid.Nil {
 		model.Id = uuid.New()
-		model.LastLogin = time.Now()
 	}
 	if err := s.authRepo.CreateProfilePreferences(ctx, model); err != nil {
 		return errs.Wrap(err)
@@ -58,7 +124,7 @@ func (s service) CreateProfilePreferences(ctx context.Context, model *domain.Pro
 func (s service) CreateProfile(ctx context.Context, model *domain.Profile) errs.Error {
 	if model.Id == uuid.Nil {
 		model.Id = uuid.New()
-		model.Account = "Free"
+		model.Account = "free"
 		model.CreatedAt = time.Now()
 	}
 
