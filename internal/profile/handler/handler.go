@@ -80,10 +80,11 @@ func (h HTTPHandler) AsDataNotFound(ctx *gin.Context) {
 	})
 }
 
-func (h HTTPHandler) AsJWTExist(ctx *gin.Context) {
+func (h HTTPHandler) AsJWTExist(ctx *gin.Context, token string) {
 	ctx.JSON(http.StatusUnauthorized, gin.H{
 		"responseCode":    "401",
 		"responseMessage": "You already login before",
+		"token":           token,
 	})
 }
 
@@ -369,6 +370,30 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 	return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
 }
 
+func (h HTTPHandler) RequestUpgrade(ctx *app.Context) *server.ResponseInterface {
+	//Declaring Variables
+	// idParam := ctx.Param("id")
+	// id, err := uuid.Parse(idParam)
+	// if err != nil {
+	// 	return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	// }
+
+	tokenString := ctx.GetHeader("Authorization")
+	JWTRead, err := jwthelper.TokenRead(tokenString)
+	if err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	if JWTRead.Account == "free" {
+
+		if err := mail.Upgrade_mail(JWTRead); err != nil {
+			return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+		}
+		return h.AsJsonInterface(ctx, http.StatusAccepted, "check your mail")
+	}
+
+	return h.AsJsonInterface(ctx, http.StatusAccepted, "You're already upgrade your account")
+}
+
 func (h HTTPHandler) ProfileSwipe(ctx *app.Context) *server.ResponseInterface {
 	//Declaring Variables
 	idParam := ctx.Param("id")
@@ -385,22 +410,22 @@ func (h HTTPHandler) ProfileSwipe(ctx *app.Context) *server.ResponseInterface {
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
-	// if JWTRead.Account == "free" {
-	// 	if JWTRead.LastLogin.Day() == time.Now().Day() {
-	// 		viewCount, err := h.ProfileService.CheckView(ctx, JWTRead.Id)
-	// 		if err != nil {
-	// 			return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
-	// 		}
-	// 		if *viewCount == 10 {
-	// 			return h.DataReadError(ctx, http.StatusUnauthorized, "Sorry your view limit reached, please upgrade your account")
-	// 		} else {
-	// 			if err := h.ProfileService.UpdateLikePass(ctx, JWTRead.Id, id, parameterParam); err != nil {
-	// 				return h.DataReadError(ctx, http.StatusBadRequest, "Error in updating "+parameterParam)
-	// 			}
-	// 			return h.AsJsonInterface(ctx, http.StatusAccepted, "success")
-	// 		}
-	// 	}
-	// }
+	if JWTRead.Account == "free" {
+		if JWTRead.LastLogin.Day() == time.Now().Day() {
+			viewCount, err := h.ProfileService.CheckView(ctx, JWTRead.Id)
+			if err != nil {
+				return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+			}
+			if *viewCount == 10 {
+				return h.DataReadError(ctx, http.StatusUnauthorized, "Sorry your view limit reached, please upgrade your account")
+			} else {
+				if err := h.ProfileService.UpdateLikePass(ctx, JWTRead.Id, id, parameterParam); err != nil {
+					return h.DataReadError(ctx, http.StatusBadRequest, "Error in updating "+parameterParam)
+				}
+				return h.AsJsonInterface(ctx, http.StatusAccepted, "success")
+			}
+		}
+	}
 	if err := h.ProfileService.UpdateLikePass(ctx, JWTRead.Id, id, parameterParam); err != nil {
 		return h.DataReadError(ctx, http.StatusBadRequest, "Error in updating "+parameterParam)
 	}
@@ -410,6 +435,7 @@ func (h HTTPHandler) ProfileSwipe(ctx *app.Context) *server.ResponseInterface {
 func (h HTTPHandler) Login(ctx *gin.Context) {
 	//Declaring Variables
 	var tokenString string
+	var account *string
 	request := domain.ProfileLogin{
 		Email:    ctx.PostForm("email"),
 		Password: ctx.PostForm("password"),
@@ -438,7 +464,6 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 	if err != nil {
 		h.AsDatabaseError(ctx)
 		return
-
 	} else if checkJWT.Jwt == "" {
 		tokenString, err = jwthelper.GenerateJWT(*resp, *verified)
 		if err != nil {
@@ -454,13 +479,33 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 			return
 		}
 	} else if checkJWT.Jwt != "" {
+		tokenString, err = jwthelper.GenerateJWT(*resp, *verified)
+		if err != nil {
+			h.AsInvalidTokenError(ctx)
+			return
+		}
 		JWTRead, err := jwthelper.TokenRead(checkJWT.Jwt)
 		if err != nil {
 			h.AsInvalidTokenError(ctx)
 			return
 		}
+		account, err = h.ProfileService.CheckAccount(ctx, JWTRead.Id)
+		if err != nil {
+			h.AsInvalidTokenError(ctx)
+			return
+		}
+		if *account != JWTRead.Account {
+			if err := h.ProfileService.StoreJWT(ctx, tokenString, resp.Id); err != nil {
+				h.AsDataNotFound(ctx)
+				return
+			}
+			ctx.JSON(http.StatusOK, gin.H{
+				"token": tokenString,
+			})
+			return
+		}
 		if JWTRead.LastLogin.Day() == time.Now().Day() {
-			h.AsJWTExist(ctx)
+			h.AsJWTExist(ctx, checkJWT.Jwt)
 			return
 		} else {
 			if err := h.ProfileService.StoreJWT(ctx, tokenString, resp.Id); err != nil {
@@ -556,5 +601,21 @@ func (h HTTPHandler) UpdateVerification(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"Message": "Account verified, please relogin",
+	})
+}
+
+func (h HTTPHandler) UpgradeAccount(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	Id, err := uuid.Parse(idParam)
+	if err != nil {
+		h.AsRequiredClientIdError(ctx)
+		return
+	}
+	if err := h.ProfileService.UpgradeAccount(ctx, Id); err != nil {
+		h.AsDataNotFound(ctx)
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"Message": "Account upgraded, please relogin",
 	})
 }

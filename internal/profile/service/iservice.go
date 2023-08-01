@@ -12,6 +12,8 @@ import (
 type Service interface {
 	CreateProfilePreferences(ctx context.Context, model *domain.ProfilePreferences) errs.Error
 	Login(ctx context.Context, email string) (*domain.Profile, errs.Error)
+	CheckAccount(ctx context.Context, Id uuid.UUID) (*string, errs.Error)
+	UpgradeAccount(ctx context.Context, Id uuid.UUID) errs.Error
 	StoreJWT(ctx context.Context, jwt string, Id uuid.UUID) errs.Error
 	CheckJWT(ctx context.Context, Id uuid.UUID) (*domain.ProfilePreferences, errs.Error)
 	GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation, list string) (*domain.ProfileData, errs.Error)

@@ -36,6 +36,21 @@ func (s service) Login(ctx context.Context, email string) (*domain.Profile, errs
 	return result, nil
 }
 
+func (s service) CheckAccount(ctx context.Context, Id uuid.UUID) (*string, errs.Error) {
+	result, err := s.authRepo.CheckAccount(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) UpgradeAccount(ctx context.Context, Id uuid.UUID) errs.Error {
+	if err := s.authRepo.UpgradeAccount(ctx, Id); err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
+}
+
 func (s service) StoreJWT(ctx context.Context, jwt string, Id uuid.UUID) errs.Error {
 	if err := s.authRepo.StoreJWT(ctx, jwt, Id); err != nil {
 		return err

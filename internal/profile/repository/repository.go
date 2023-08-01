@@ -174,6 +174,32 @@ func (r repo) ResetView(ctx context.Context, Id uuid.UUID) errs.Error {
 
 }
 
+func (r repo) CheckAccount(ctx context.Context, Id uuid.UUID) (*string, errs.Error) {
+	var (
+		model *domain.Profile
+	)
+	if err := r.db.WithContext(ctx).
+		Model(&domain.Profile{}).
+		Where("id = ?", Id).
+		First(&model).
+		Error; err != nil {
+		return nil, errs.Wrap(err)
+	}
+	return &model.Account, nil
+
+}
+
+func (r repo) UpgradeAccount(ctx context.Context, Id uuid.UUID) errs.Error {
+	if err := r.db.WithContext(ctx).
+		Model(&domain.Profile{}).
+		Where("id = ?", Id).
+		Update("account", "premium").Error; err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
+
+}
+
 func (r repo) GetProfileFullData(ctx context.Context, email string) (*domain.Profile, errs.Error) {
 	var (
 		models *domain.Profile
