@@ -14,6 +14,7 @@ func (h *HttpServe) setupRouter() {
 	v1.GET("/verify/:id", h.profileHandler.UpdateVerification)
 	// h.MoodleRoute("POST", "/profile", h.profileHandler.CreateProfile)
 	h.MoodleRoute("GET", "/profile", h.profileHandler.GetProfileData)
+	h.MoodleRoute("GET", "/swipe/:id", h.profileHandler.ProfileSwipe)
 	// h.MoodleRoute("GET", "/verify/:id", h.profileHandler.UpdateVerification)
 }
 

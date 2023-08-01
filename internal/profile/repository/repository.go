@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"dating-api/internal/profile/domain"
 	baseModel "dating-api/pkg/db"
@@ -16,11 +18,12 @@ type repo struct {
 	base *baseModel.PostgreSQLClientRepository
 }
 
-func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation string) (*domain.ProfileData, errs.Error) {
+func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation, list string) (*domain.ProfileData, errs.Error) {
 	var (
 		models *domain.ProfileData
 	)
-	query := r.db.WithContext(ctx).Model(&domain.Profile{})
+
+	query := r.db.Debug().WithContext(ctx).Model(&domain.Profile{})
 	if sex == "male" && orientation == "straight" {
 		query.Where("sex = ?", "female").
 			Where("orientation = ?", "straight")
@@ -38,9 +41,14 @@ func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation
 	} else if orientation == "experiment" {
 		query.Where("sex IS NOT NULL")
 	}
-
+	listArray := strings.Split(list, ",")
+	if list == "," {
+		query.Where("id <> ?", Id)
+	} else {
+		query.Where("id <> ?", Id).
+			Where("id NOT IN ?", listArray)
+	}
 	if err := query.
-		Where("id <> ?", Id).
 		Order("RANDOM ()").
 		First(&models).
 		Error; err != nil {
@@ -62,6 +70,70 @@ func (r repo) CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.Erro
 		return nil, errs.Wrap(err)
 	}
 	return &model.Verified, nil
+
+}
+
+func (r repo) CheckLikePass(ctx context.Context, Id uuid.UUID) (*string, errs.Error) {
+	var (
+		like   *string
+		pass   *string
+		result string
+	)
+	if err := r.db.WithContext(ctx).
+		Model(&domain.ProfilePreferences{}).
+		// Select(`REPLACE(concat("like", pass), '{', '') AS list`).
+		Select(`array_to_string("like", ',') AS like`).
+		Where("people_id = ?", Id).
+		Scan(&like).
+		Error; err != nil {
+		return nil, errs.Wrap(err)
+	}
+
+	if err := r.db.WithContext(ctx).
+		Model(&domain.ProfilePreferences{}).
+		// Select(`REPLACE(concat("like", pass), '{', '') AS list`).
+		Select(`array_to_string("pass", ',') AS pass`).
+		Where("people_id = ?", Id).
+		Scan(&pass).
+		Error; err != nil {
+		return nil, errs.Wrap(err)
+	}
+	// If "like" is nil or empty, set it to an empty string
+	if like == nil || *like == "" {
+		emptyLike := ""
+		like = &emptyLike
+		result = *pass
+		return &result, nil
+	}
+
+	// If "pass" is nil or empty, set it to an empty string
+	if pass == nil || *pass == "" {
+		emptyPass := ""
+		pass = &emptyPass
+		result = *like
+		return &result, nil
+	}
+
+	result = *like + "," + *pass
+	return &result, nil
+
+}
+
+func (r repo) UpdateLikePass(ctx context.Context, Id, target uuid.UUID, parameter string) errs.Error {
+	query := r.db.Debug().WithContext(ctx).
+		Model(&domain.ProfilePreferences{}).
+		Where("people_id = ?", Id)
+
+	if parameter == "pass" {
+		query.Update(parameter, gorm.Expr(parameter+" || ?", fmt.Sprintf("{%s}", target)))
+	} else if parameter == "like" {
+		query.Update("like", gorm.Expr(`"like" || ?`, fmt.Sprintf("{%s}", target)))
+	}
+	if err := query.
+		Error; err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
 
 }
 

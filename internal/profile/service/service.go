@@ -20,8 +20,8 @@ type service struct {
 	authRepo repository.Repository
 }
 
-func (s service) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation string) (*domain.ProfileData, errs.Error) {
-	result, err := s.authRepo.GetProfileData(ctx, Id, sex, orientation)
+func (s service) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation, list string) (*domain.ProfileData, errs.Error) {
+	result, err := s.authRepo.GetProfileData(ctx, Id, sex, orientation, list)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +57,21 @@ func (s service) CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.E
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s service) CheckLikePass(ctx context.Context, Id uuid.UUID) (*string, errs.Error) {
+	result, err := s.authRepo.CheckLikePass(ctx, Id)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s service) UpdateLikePass(ctx context.Context, Id, target uuid.UUID, parameter string) errs.Error {
+	if err := s.authRepo.UpdateLikePass(ctx, Id, target, parameter); err != nil {
+		return errs.Wrap(err)
+	}
+	return nil
 }
 
 func (s service) CheckView(ctx context.Context, Id uuid.UUID) (*int, errs.Error) {

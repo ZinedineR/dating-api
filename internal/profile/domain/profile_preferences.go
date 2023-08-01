@@ -19,6 +19,10 @@ type ProfilePreferences struct {
 	Profile  *Profile       `gorm:"foreignKey:PeopleId"`
 }
 
+type ProfilePreferencesLikePass struct {
+	List string `gorm:"type:varchar;null" json:"list"`
+}
+
 func (model *ProfilePreferences) TableName() string {
 	return ProfilePreferencesTableName
 }

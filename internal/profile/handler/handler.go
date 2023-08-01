@@ -337,7 +337,11 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 			if *viewCount == 10 {
 				return h.DataReadError(ctx, http.StatusUnauthorized, "Sorry your view limit reached, please upgrade your account")
 			} else {
-				resp, err := h.ProfileService.GetProfileData(ctx, JWTRead.Id, JWTRead.Sex, JWTRead.Orientation)
+				list, err := h.ProfileService.CheckLikePass(ctx, JWTRead.Id)
+				if err != nil {
+					return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+				}
+				resp, err := h.ProfileService.GetProfileData(ctx, JWTRead.Id, JWTRead.Sex, JWTRead.Orientation, *list)
 				if err != nil {
 					return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 				}
@@ -351,7 +355,11 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 			}
 		}
 	}
-	resp, err := h.ProfileService.GetProfileData(ctx, JWTRead.Id, JWTRead.Sex, JWTRead.Orientation)
+	list, err := h.ProfileService.CheckLikePass(ctx, JWTRead.Id)
+	if err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	resp, err := h.ProfileService.GetProfileData(ctx, JWTRead.Id, JWTRead.Sex, JWTRead.Orientation, *list)
 	if err != nil {
 		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
 	}
@@ -359,6 +367,44 @@ func (h HTTPHandler) GetProfileData(ctx *app.Context) *server.ResponseInterface 
 		return h.DataNotFound(ctx)
 	}
 	return h.AsJsonInterface(ctx, http.StatusAccepted, resp)
+}
+
+func (h HTTPHandler) ProfileSwipe(ctx *app.Context) *server.ResponseInterface {
+	//Declaring Variables
+	idParam := ctx.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	parameterParam := ctx.Query("parameter")
+	if parameterParam != "pass" && parameterParam != "like" {
+		return h.DataReadError(ctx, http.StatusUnauthorized, "wrong swipe parameter")
+	}
+	tokenString := ctx.GetHeader("Authorization")
+	JWTRead, err := jwthelper.TokenRead(tokenString)
+	if err != nil {
+		return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	}
+	// if JWTRead.Account == "free" {
+	// 	if JWTRead.LastLogin.Day() == time.Now().Day() {
+	// 		viewCount, err := h.ProfileService.CheckView(ctx, JWTRead.Id)
+	// 		if err != nil {
+	// 			return h.AsJsonInterface(ctx, http.StatusBadRequest, err)
+	// 		}
+	// 		if *viewCount == 10 {
+	// 			return h.DataReadError(ctx, http.StatusUnauthorized, "Sorry your view limit reached, please upgrade your account")
+	// 		} else {
+	// 			if err := h.ProfileService.UpdateLikePass(ctx, JWTRead.Id, id, parameterParam); err != nil {
+	// 				return h.DataReadError(ctx, http.StatusBadRequest, "Error in updating "+parameterParam)
+	// 			}
+	// 			return h.AsJsonInterface(ctx, http.StatusAccepted, "success")
+	// 		}
+	// 	}
+	// }
+	if err := h.ProfileService.UpdateLikePass(ctx, JWTRead.Id, id, parameterParam); err != nil {
+		return h.DataReadError(ctx, http.StatusBadRequest, "Error in updating "+parameterParam)
+	}
+	return h.AsJsonInterface(ctx, http.StatusAccepted, "success")
 }
 
 func (h HTTPHandler) Login(ctx *gin.Context) {
