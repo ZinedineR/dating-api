@@ -66,6 +66,13 @@ func (h HTTPHandler) AsDatabaseError(ctx *gin.Context) {
 	})
 }
 
+func (h HTTPHandler) AsNotVerfied(ctx *gin.Context) {
+	ctx.JSON(http.StatusUnauthorized, gin.H{
+		"responseCode":    "401",
+		"responseMessage": "Account still not verified",
+	})
+}
+
 func (h HTTPHandler) AsDuplicateEmail(ctx *gin.Context) {
 	ctx.JSON(http.StatusUnauthorized, gin.H{
 		"responseCode":    "401",
@@ -436,6 +443,7 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 	//Declaring Variables
 	var tokenString string
 	var account *string
+	var verified *bool
 	request := domain.ProfileLogin{
 		Email:    ctx.PostForm("email"),
 		Password: ctx.PostForm("password"),
@@ -454,11 +462,15 @@ func (h HTTPHandler) Login(ctx *gin.Context) {
 		h.AsPasswordUnmatched(ctx)
 		return
 	}
-	verified, err := h.ProfileService.CheckVerified(ctx, resp.Id)
+	verified, err = h.ProfileService.CheckVerified(ctx, resp.Id)
 	if err != nil {
 		h.AsDatabaseError(ctx)
 		return
 
+	}
+	if !*verified {
+		h.AsNotVerfied(ctx)
+		return
 	}
 	checkJWT, err := h.ProfileService.CheckJWT(ctx, resp.Id)
 	if err != nil {

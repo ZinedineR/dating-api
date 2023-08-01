@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -52,6 +53,9 @@ func (r repo) GetProfileData(ctx context.Context, Id uuid.UUID, sex, orientation
 		Order("RANDOM ()").
 		First(&models).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models, nil
+		}
 		return nil, errs.Wrap(err)
 	}
 	return models, nil
@@ -67,6 +71,9 @@ func (r repo) CheckVerified(ctx context.Context, Id uuid.UUID) (*bool, errs.Erro
 		Where("people_id = ?", Id).
 		First(&model).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &model.Verified, nil
+		}
 		return nil, errs.Wrap(err)
 	}
 	return &model.Verified, nil
@@ -146,6 +153,9 @@ func (r repo) CheckView(ctx context.Context, Id uuid.UUID) (*int, errs.Error) {
 		Where("people_id = ?", Id).
 		First(&model).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &model.View, nil
+		}
 		return nil, errs.Wrap(err)
 	}
 	return &model.View, nil
@@ -183,6 +193,9 @@ func (r repo) CheckAccount(ctx context.Context, Id uuid.UUID) (*string, errs.Err
 		Where("id = ?", Id).
 		First(&model).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &model.Account, nil
+		}
 		return nil, errs.Wrap(err)
 	}
 	return &model.Account, nil
@@ -209,6 +222,9 @@ func (r repo) GetProfileFullData(ctx context.Context, email string) (*domain.Pro
 		Where("email = ?", email).
 		First(&models).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models, nil
+		}
 		return nil, errs.Wrap(err)
 	}
 	return models, nil
@@ -235,6 +251,9 @@ func (r repo) CheckJWT(ctx context.Context, Id uuid.UUID) (*domain.ProfilePrefer
 		Where("people_id = ?", Id).
 		First(&models).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return models, nil
+		}
 		return nil, errs.Wrap(err)
 	}
 	return models, nil
